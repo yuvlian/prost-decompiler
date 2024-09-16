@@ -6,7 +6,7 @@ pub static STRUCT_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 pub static FIELD_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"#\[prost\((.*?)\)\]\s*pub (\w+): (\w+)").unwrap()
+    Regex::new(r"#\[prost\((.*?)\)\]\s*pub (\w+): ([\w:<>]+)").unwrap()
 });
 
 pub static ENUM_REGEX: LazyLock<Regex> = LazyLock::new(|| {

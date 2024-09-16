@@ -49,7 +49,6 @@ fn parse_rust_code(rust_code: &str) -> String {
             let typ = &field_match[3];
             let mut field_type = match typ {
                 "String" => "string".to_string(),
-                "Vec<u8>" => "bytes".to_string(),
                 "i32" => "int32".to_string(),
                 "u32" => "uint32".to_string(),
                 "i64" => "int64".to_string(),
@@ -57,14 +56,24 @@ fn parse_rust_code(rust_code: &str) -> String {
                 "f32" => "float".to_string(),
                 "f64" => "double".to_string(),
                 "bool" => "bool".to_string(),
-                _ => typ.to_string(),
+                "::prost::alloc::string::String" => "string".to_string(),
+                "::prost::alloc::vec::Vec<u8>" => "bytes".to_string(),
+                "::prost::alloc::vec::Vec<f32>" => "float".to_string(),
+                _ if typ.contains("Option") => {
+                    let x = typ.replace("::core::option::Option<", "").replace(">", "");
+                    x.to_string()
+                },
+                _ => typ.to_string()
             };
 
             if tag.contains("repeated") {
                 field_type = format!("repeated {}", field_type);
             } else if tag.contains("map") {
                 let map_types: Vec<&str> = tag.split(',').collect();
-                field_type = format!("map<{}, {}>", map_types[0], map_types[1]);
+                let field = format!("map<{}, {}>", map_types[0], map_types[1]);
+                field_type = field.replace(r#"""#, "").replace("map = ", "");
+            } else if tag.contains("sint32") {
+                field_type = format!("sint32 {}", field_type);
             }
 
             if tag.contains("oneof") {
