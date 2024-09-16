@@ -1,7 +1,9 @@
-use regex::Regex;
+use std::collections::HashMap;
 use std::fs;
 use std::io::{self, Write};
-use std::collections::HashMap;
+
+mod re;
+use re::*;
 
 fn main() -> io::Result<()> {
     let mut input = String::new();
@@ -32,19 +34,8 @@ fn parse_rust_code(rust_code: &str) -> String {
     
     protobuf_definitions.push_str("syntax = \"proto3\";\n\n");
 
-    // Regex for extracting structs and fields
-    let struct_regex = Regex::new(r"#\[derive\(.*?Message\)\]\s*pub struct (\w+) \{([^}]*)\}").unwrap();
-    let field_regex = Regex::new(r"#\[prost\((.*?)\)\]\s*pub (\w+): (\w+)").unwrap();
-    
-    // Regex for extracting enums
-    let enum_regex = Regex::new(r"#\[derive\(.*?Enumeration\)\]\s*#[repr\((.*?)\)]\s*pub enum (\w+) \{([^}]*)\}").unwrap();
-    let enum_variant_regex = Regex::new(r"(\w+) = (\d+),").unwrap();
-    
-    // Regex for extracting oneof fields
-    let oneof_regex = Regex::new(r"#\[prost\(oneof\((.*?)\)\]\s*pub (\w+): (\w+)").unwrap();
-
     // Extract structs
-    for struct_match in struct_regex.captures_iter(rust_code) {
+    for struct_match in STRUCT_REGEX.captures_iter(rust_code) {
         let struct_name = &struct_match[1];
         let fields_block = &struct_match[2];
         
@@ -52,7 +43,7 @@ fn parse_rust_code(rust_code: &str) -> String {
         let mut oneofs = HashMap::new();
 
         // Collect fields and oneofs
-        for field_match in field_regex.captures_iter(fields_block) {
+        for field_match in FIELD_REGEX.captures_iter(fields_block) {
             let tag = &field_match[1];
             let name = &field_match[2];
             let typ = &field_match[3];
@@ -105,13 +96,13 @@ fn parse_rust_code(rust_code: &str) -> String {
     }
 
     // Process enums
-    for enum_match in enum_regex.captures_iter(rust_code) {
+    for enum_match in ENUM_REGEX.captures_iter(rust_code) {
         let enum_name = &enum_match[2];
         let enum_variants_block = &enum_match[3];
         
         let mut variants = Vec::new();
         
-        for variant_match in enum_variant_regex.captures_iter(enum_variants_block) {
+        for variant_match in ENUM_VARIANT_REGEX.captures_iter(enum_variants_block) {
             let variant_name = &variant_match[1];
             let variant_value = &variant_match[2];
             variants.push(format!("    {} = {};", variant_name, variant_value));
