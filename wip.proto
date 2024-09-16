@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+message One {
+    int32 id = 1;
+    int32 signed_id = 2;
+    uint32 unsigned_id = 3;
+    bool is_active = 4;
+    double balance = 5;
+    float rating = 6;
+    uint32 fixed_value = 7;
+    int32 signed_fixed_value = 8;
+
+}
+message Two {
+    int32 status = 1;
+    int64 long_signed_id = 2;
+    uint64 long_unsigned_id = 3;
+    uint64 long_fixed_value = 4;
+    int64 long_signed_fixed_value = 5;
+
+}
+message NestedMessage {
+    int32 nested_id = 1;
+
+}
