@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+message One {
+    int32 id = 1;                       // Basic signed 32-bit integer
+    sint32 signed_id = 2;               // Signed integer with ZigZag encoding for negative numbers
+    uint32 unsigned_id = 3;             // Unsigned 32-bit integer
+    string name = 4;                    // UTF-8 encoded string
+    bool is_active = 5;                 // Boolean value
+    double balance = 6;                 // 64-bit floating point number
+    float rating = 7;                   // 32-bit floating point number
+    bytes data_blob = 8;                // Arbitrary sequence of bytes
+    fixed32 fixed_value = 9;            // 32-bit fixed-size integer
+    sfixed32 signed_fixed_value = 10;   // Signed 32-bit fixed-size integer
+    repeated float values = 11;         // Repeated field with 32-bit floating point values
+    map<string, int32> key_value_pairs = 12; // A map of string to signed 32-bit integers
+}
+
+message Two {
+    One one_field = 1;    // Custom type (Message One)
+    Status status = 2;    // Custom type (Enum Status)
+
+    // Oneof with 3 elements
+    oneof choice {
+        string text_option = 3;
+        int32 number_option = 4;
+        bool boolean_option = 5;
+    }
+
+    sint64 long_signed_id = 6;          // Signed 64-bit integer
+    uint64 long_unsigned_id = 7;        // Unsigned 64-bit integer
+    fixed64 long_fixed_value = 8;       // Fixed-size 64-bit integer
+    sfixed64 long_signed_fixed_value = 9; // Signed fixed-size 64-bit integer
+}
+
+message NestedMessage {
+    int32 nested_id = 1;    // Signed 32-bit integer
+    string nested_data = 2; // UTF-8 encoded string
+}
+
+enum Status {
+    UNKNOWN = 0;
+    ACTIVE = 1;
+    INACTIVE = 2;
+}

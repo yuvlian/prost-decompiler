@@ -59,6 +59,12 @@ fn parse_rust_code(rust_code: &str) -> String {
                 "::prost::alloc::string::String" => "string".to_string(),
                 "::prost::alloc::vec::Vec<u8>" => "bytes".to_string(),
                 "::prost::alloc::vec::Vec<f32>" => "float".to_string(),
+                "::prost::alloc::vec::Vec<f64>" => "double".to_string(),
+                "::prost::alloc::vec::Vec<i32>" => "int32".to_string(),
+                "::prost::alloc::vec::Vec<u32>" => "uint32".to_string(),
+                "::prost::alloc::vec::Vec<i64>" => "int64".to_string(),
+                "::prost::alloc::vec::Vec<u64>" => "uint64".to_string(),
+                "::prost::alloc::vec::Vec<bool>" => "bool".to_string(),
                 _ if typ.contains("Option") => {
                     let x = typ.replace("::core::option::Option<", "").replace(">", "");
                     x.to_string()
@@ -73,7 +79,17 @@ fn parse_rust_code(rust_code: &str) -> String {
                 let field = format!("map<{}, {}>", map_types[0], map_types[1]);
                 field_type = field.replace(r#"""#, "").replace("map = ", "");
             } else if tag.contains("sint32") {
-                field_type = format!("sint32 {}", field_type);
+                field_type = String::from("sint32");
+            } else if tag.contains("sfixed32") {
+                field_type = String::from("sfixed32");
+            } else if tag.contains("fixed32") {
+                field_type = String::from("fixed32");
+            } else if tag.contains("sint64") {
+                field_type = String::from("sint64");
+            } else if tag.contains("sfixed64") {
+                field_type = String::from("sfixed64");
+            } else if tag.contains("fixed64") {
+                field_type = String::from("fixed64");
             }
 
             if tag.contains("oneof") {
