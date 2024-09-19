@@ -28,6 +28,8 @@ pub struct One {
         ::prost::alloc::string::String,
         i32,
     >,
+    #[prost(map = "sint64, enumeration(Status)", tag = "3883")]
+    pub status_map: ::std::collections::HashMap<i64, i32>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Two {
@@ -37,6 +39,8 @@ pub struct Two {
     pub multiple_one_field: ::prost::alloc::vec::Vec<One>,
     #[prost(enumeration = "Status", tag = "2")]
     pub status: i32,
+    #[prost(enumeration = "Status", repeated, tag = "363")]
+    pub multiple_status_field: ::prost::alloc::vec::Vec<i32>,
     #[prost(sint64, tag = "6")]
     pub long_signed_id: i64,
     #[prost(uint64, tag = "7")]
@@ -59,13 +63,6 @@ pub mod two {
         #[prost(bool, tag = "5")]
         BooleanOption(bool),
     }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct NestedMessage {
-    #[prost(int32, tag = "1")]
-    pub nested_id: i32,
-    #[prost(string, tag = "2")]
-    pub nested_data: ::prost::alloc::string::String,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]

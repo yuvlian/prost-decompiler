@@ -39,7 +39,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if is_in_message {
                 writeln!(output, "}}")?;
             }
-            let message_name = caps.get(1).unwrap().as_str().to_string();
+            writeln!(output, "")?;
+            let message_name = caps.get(1).unwrap().as_str().replace(":", "");
             writeln!(output, "message {} {{", message_name)?;
             is_in_message = true;
             continue;
@@ -52,7 +53,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Some(next_line) = lines.peek() {
                 if let Ok(next_line) = next_line {
                     let next_line = next_line.trim();
-                    let field_name = next_line.split_whitespace().nth(1).unwrap();
+                    let field_name = next_line.split_whitespace().nth(1).unwrap().replace(":", "");
                     writeln!(output, "  map<{}, {}> {} = {};",
                              key_type, value_type, field_name, tag)?;
                     lines.next();
@@ -67,7 +68,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Some(next_line) = lines.peek() {
                 if let Ok(next_line) = next_line {
                     let next_line = next_line.trim();
-                    let field_name = next_line.split_whitespace().nth(1).unwrap();
+                    let field_name = next_line.split_whitespace().nth(1).unwrap().replace(":", "");
                     writeln!(output, "  repeated {} {} = {};",
                              field_type, field_name, tag)?;
                     lines.next();
@@ -82,7 +83,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Some(next_line) = lines.peek() {
                 if let Ok(next_line) = next_line {
                     let next_line = next_line.trim();
-                    let field_name = next_line.split_whitespace().nth(1).unwrap();
+                    let field_name = next_line.split_whitespace().nth(1).unwrap().replace(":", "");
                     writeln!(output, "  {} {} = {};",
                              field_type, field_name, tag)?;
                     lines.next();
@@ -97,7 +98,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 if let Ok(next_line) = next_line {
                     let next_line = next_line.trim();
                     let parts: Vec<&str> = next_line.split_whitespace().collect();
-                    let field_name = parts[1].split(':').next().unwrap();
+                    let field_name = parts[1].split(':').next().unwrap().replace(":", "");
                     let field_type = parts[1].split('<').last().unwrap().split('>').next().unwrap();
                     writeln!(output, "  {} {} = {};",
                              field_type, field_name, tag)?;
@@ -113,7 +114,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 if let Ok(next_line) = next_line {
                     let next_line = next_line.trim();
                     let parts: Vec<&str> = next_line.split_whitespace().collect();
-                    let field_name = parts[1].split(':').next().unwrap();
+                    let field_name = parts[1].split(':').next().unwrap().replace(":", "");
                     let field_type = parts[1].split('<').last().unwrap().split('>').next().unwrap();
                     writeln!(output, "  repeated {} {} = {};",
                              field_type, field_name, tag)?;
