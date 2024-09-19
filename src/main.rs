@@ -1,146 +1,132 @@
-use std::collections::HashMap;
-use std::fs;
-use std::io::{self, Write};
+use std::fs::File;
+use std::io::{self, BufRead, Write};
+use std::path::Path;
 
-mod re;
-use re::*;
+include!("re.rs");
 
-fn main() -> io::Result<()> {
-    let mut input = String::new();
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut input_file = String::new();
+    let mut output_file = String::new();
 
-    print!("prost output file name: ");
-    io::stdout().flush()?;
-    io::stdin().read_line(&mut input)?;
+    println!("Enter the name of the file to be decompiled:");
+    io::stdin().read_line(&mut input_file)?;
+    let input_file = input_file.trim();
+    let input_path = Path::new(input_file);
+    let file = File::open(&input_path)?;
+    let reader = io::BufReader::new(file);
 
-    let rust_file = input.trim();
-    let rust_code = fs::read_to_string(rust_file)?;
-    let protobuf_definitions = parse_rust_code(&rust_code);
+    println!("Enter the name for the output file:");
+    io::stdin().read_line(&mut output_file)?;
+    let output_file = output_file.trim();
+    let output_path = Path::new(output_file);
+
+    let mut output = File::create(&output_path)?;
+    writeln!(output, r#"syntax = "proto3";"#)?;
+
+    let mut is_in_message = false;
+
+    let mut lines = reader.lines().peekable();
     
-    let mut output = String::new();
+    while let Some(line) = lines.next() {
+        let line = line?;
+        let trimmed_line = line.trim();
+        
+        if trimmed_line.starts_with("//") || trimmed_line.starts_with("#[derive") {
+            continue;
+        }
 
-    print!("decompiled proto output file name: ");
-    io::stdout().flush()?;
-    io::stdin().read_line(&mut output)?;
+        if let Some(caps) = STRUCT_RE.captures(trimmed_line) {
+            if is_in_message {
+                writeln!(output, "}}")?;
+            }
+            let message_name = caps.get(1).unwrap().as_str().to_string();
+            writeln!(output, "message {} {{", message_name)?;
+            is_in_message = true;
+            continue;
+        }
 
-    let protobuf_file = output.trim();
-    fs::write(protobuf_file, protobuf_definitions)?;
-    
-    println!("Protobuf definitions written to {}", protobuf_file);
+        if let Some(caps) = MAP_RE.captures(trimmed_line) {
+            let key_type = caps.get(1).unwrap().as_str();
+            let value_type = caps.get(2).unwrap().as_str();
+            let tag = caps.get(3).unwrap().as_str();
+            if let Some(next_line) = lines.peek() {
+                if let Ok(next_line) = next_line {
+                    let next_line = next_line.trim();
+                    let field_name = next_line.split_whitespace().nth(1).unwrap();
+                    writeln!(output, "  map<{}, {}> {} = {};",
+                             key_type, value_type, field_name, tag)?;
+                    lines.next();
+                }
+            }
+            continue;
+        }
+
+        if let Some(caps) = REPEATED_RE.captures(trimmed_line) {
+            let field_type = caps.get(1).unwrap().as_str();
+            let tag = caps.get(2).unwrap().as_str();
+            if let Some(next_line) = lines.peek() {
+                if let Ok(next_line) = next_line {
+                    let next_line = next_line.trim();
+                    let field_name = next_line.split_whitespace().nth(1).unwrap();
+                    writeln!(output, "  repeated {} {} = {};",
+                             field_type, field_name, tag)?;
+                    lines.next();
+                }
+            }
+            continue;
+        }
+
+        if let Some(caps) = BASIC_RE.captures(trimmed_line) {
+            let field_type = caps.get(1).unwrap().as_str();
+            let tag = caps.get(2).unwrap().as_str();
+            if let Some(next_line) = lines.peek() {
+                if let Ok(next_line) = next_line {
+                    let next_line = next_line.trim();
+                    let field_name = next_line.split_whitespace().nth(1).unwrap();
+                    writeln!(output, "  {} {} = {};",
+                             field_type, field_name, tag)?;
+                    lines.next();
+                }
+            }
+            continue;
+        }
+
+        if let Some(caps) = OPTIONAL_RE.captures(trimmed_line) {
+            let tag = caps.get(1).unwrap().as_str();
+            if let Some(next_line) = lines.peek() {
+                if let Ok(next_line) = next_line {
+                    let next_line = next_line.trim();
+                    let parts: Vec<&str> = next_line.split_whitespace().collect();
+                    let field_name = parts[1].split(':').next().unwrap();
+                    let field_type = parts[1].split('<').last().unwrap().split('>').next().unwrap();
+                    writeln!(output, "  {} {} = {};",
+                             field_type, field_name, tag)?;
+                    lines.next();
+                }
+            }
+            continue;
+        }
+
+        if let Some(caps) = REPEATED_MESSAGE_RE.captures(trimmed_line) {
+            let tag = caps.get(1).unwrap().as_str();
+            if let Some(next_line) = lines.peek() {
+                if let Ok(next_line) = next_line {
+                    let next_line = next_line.trim();
+                    let parts: Vec<&str> = next_line.split_whitespace().collect();
+                    let field_name = parts[1].split(':').next().unwrap();
+                    let field_type = parts[1].split('<').last().unwrap().split('>').next().unwrap();
+                    writeln!(output, "  repeated {} {} = {};",
+                             field_type, field_name, tag)?;
+                    lines.next();
+                }
+            }
+            continue;
+        }
+    }
+
+    if is_in_message {
+        writeln!(output, "}}")?;
+    }
+
     Ok(())
-}
-
-fn parse_rust_code(rust_code: &str) -> String {
-    let mut protobuf_definitions = String::new();
-    
-    protobuf_definitions.push_str("syntax = \"proto3\";\n\n");
-
-    // Extract structs
-    for struct_match in STRUCT_REGEX.captures_iter(rust_code) {
-        let struct_name = &struct_match[1];
-        let fields_block = &struct_match[2];
-        
-        let mut fields = Vec::new();
-        let mut oneofs = HashMap::new();
-
-        // Collect fields and oneofs
-        for field_match in FIELD_REGEX.captures_iter(fields_block) {
-            let tag = &field_match[1];
-            let name = &field_match[2];
-            let typ = &field_match[3];
-            let mut field_type = match typ {
-                "String" => "string".to_string(),
-                "i32" => "int32".to_string(),
-                "u32" => "uint32".to_string(),
-                "i64" => "int64".to_string(),
-                "u64" => "uint64".to_string(),
-                "f32" => "float".to_string(),
-                "f64" => "double".to_string(),
-                "bool" => "bool".to_string(),
-                "::prost::alloc::string::String" => "string".to_string(),
-                "::prost::alloc::vec::Vec<u8>" => "bytes".to_string(),
-                "::prost::alloc::vec::Vec<f32>" => "float".to_string(),
-                "::prost::alloc::vec::Vec<f64>" => "double".to_string(),
-                "::prost::alloc::vec::Vec<i32>" => "int32".to_string(),
-                "::prost::alloc::vec::Vec<u32>" => "uint32".to_string(),
-                "::prost::alloc::vec::Vec<i64>" => "int64".to_string(),
-                "::prost::alloc::vec::Vec<u64>" => "uint64".to_string(),
-                "::prost::alloc::vec::Vec<bool>" => "bool".to_string(),
-                _ if typ.contains("Option") => {
-                    let x = typ.replace("::core::option::Option<", "").replace(">", "");
-                    x.to_string()
-                },
-                _ => typ.to_string()
-            };
-
-            if tag.contains("repeated") {
-                field_type = format!("repeated {}", field_type);
-            } else if tag.contains("map") {
-                let map_types: Vec<&str> = tag.split(',').collect();
-                let field = format!("map<{}, {}>", map_types[0], map_types[1]);
-                field_type = field.replace(r#"""#, "").replace("map = ", "");
-            } else if tag.contains("sint32") {
-                field_type = String::from("sint32");
-            } else if tag.contains("sfixed32") {
-                field_type = String::from("sfixed32");
-            } else if tag.contains("fixed32") {
-                field_type = String::from("fixed32");
-            } else if tag.contains("sint64") {
-                field_type = String::from("sint64");
-            } else if tag.contains("sfixed64") {
-                field_type = String::from("sfixed64");
-            } else if tag.contains("fixed64") {
-                field_type = String::from("fixed64");
-            }
-
-            if tag.contains("oneof") {
-                let oneof_name = tag.split('(').nth(1).unwrap_or("").trim_end_matches(')');
-                oneofs.entry(oneof_name.to_string()).or_insert_with(Vec::new).push(format!("{} = {};", name, fields.len() + 1));
-            } else {
-                fields.push(format!("    {} {} = {};", field_type, name, fields.len() + 1));
-            }
-        }
-
-        // Generate the oneof block
-        let mut oneof_blocks = Vec::new();
-        for (oneof_name, options) in oneofs {
-            oneof_blocks.push(format!(
-                "    oneof {} {{\n{}\n    }}",
-                oneof_name,
-                options.join("\n")
-            ));
-        }
-
-        let protobuf_struct = format!(
-            "message {} {{\n{}\n{}\n}}\n",
-            struct_name,
-            fields.join("\n"),
-            oneof_blocks.join("\n")
-        );
-
-        protobuf_definitions.push_str(&protobuf_struct);
-    }
-
-    // Process enums
-    for enum_match in ENUM_REGEX.captures_iter(rust_code) {
-        let enum_name = &enum_match[2];
-        let enum_variants_block = &enum_match[3];
-        
-        let mut variants = Vec::new();
-        
-        for variant_match in ENUM_VARIANT_REGEX.captures_iter(enum_variants_block) {
-            let variant_name = &variant_match[1];
-            let variant_value = &variant_match[2];
-            variants.push(format!("    {} = {};", variant_name, variant_value));
-        }
-        
-        let protobuf_enum = format!(
-            "enum {} {{\n{}\n}}\n",
-            enum_name,
-            variants.join("\n")
-        );
-        
-        protobuf_definitions.push_str(&protobuf_enum);
-    }
-    
-    protobuf_definitions
 }

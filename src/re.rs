@@ -1,22 +1,34 @@
 use std::sync::LazyLock;
 use regex::Regex;
 
-pub static STRUCT_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"#\[derive\(.*?Message\)\]\s*pub struct (\w+) \{([^}]*)\}").unwrap()
-});
+macro_rules! rgx {
+    ($name:ident, $pattern:expr) => {
+        pub static $name: LazyLock<Regex> = LazyLock::new(|| {
+            Regex::new($pattern).unwrap()
+        });
+    };
+}
 
-pub static FIELD_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"#\[prost\((.*?)\)\]\s*pub (\w+): ([\w:<>]+)").unwrap()
-});
+rgx!(STRUCT_RE, 
+    r###"^pub struct (\w+)"###
+);
 
-pub static ENUM_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"#\[derive\(.*?Enumeration\)\]\s*#[repr\((.*?)\)]\s*pub enum (\w+) \{([^}]*)\}").unwrap()
-});
+rgx!(MAP_RE, 
+    r###"#\[prost\(map\s*=\s*"(\w+),\s*(\w+)",\s*tag\s*=\s*"(\d+)"\)\]"###
+);
 
-pub static ENUM_VARIANT_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(\w+) = (\d+),").unwrap()
-});
+rgx!(REPEATED_RE, 
+    r###"#\[prost\((\w+),\s*repeated,\s*tag\s*=\s*"(\d+)"\)\]"###
+);
 
-pub static ONEOF_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"#\[prost\(oneof\((.*?)\)\]\s*pub (\w+): (\w+)").unwrap()
-});
+rgx!(BASIC_RE, 
+    r###"#\[prost\((\w+),\s*tag\s*=\s*"(\d+)"\)\]"###
+);
+
+rgx!(OPTIONAL_RE, 
+    r###"#\[prost\(message,\s*optional,\s*tag\s*=\s*"(\d+)"\)\]"###
+);
+
+rgx!(REPEATED_MESSAGE_RE, 
+    r###"#\[prost\(message,\s*repeated,\s*tag\s*=\s*"(\d+)"\)\]"###
+);
