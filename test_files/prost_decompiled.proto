@@ -8,31 +8,20 @@ message One {
     bool is_active = 5;
     double balance = 6;
     float rating = 7;
-    bytes data_blob = 8; // todo
+    repeated u8 data_blob = 8;
     fixed32 fixed_value = 9;
     sfixed32 signed_fixed_value = 10;
-    repeated float values = 11;
-    map<string, int32> key_value_pairs = 12; 
-    map<sint64, Status> status_map = 3883; // todo
 }
-
 message Two {
-    One one_field = 1;  // todo
-    repeated One multiple_one_field = 999;  // todo
-    Status status = 2;  // todo
-    repeated Status multiple_status_field = 363;  // todo
     sint64 long_signed_id = 6;
     uint64 long_unsigned_id = 7;
     fixed64 long_fixed_value = 8;
     sfixed64 long_signed_fixed_value = 9;
-    oneof choice {  // todo
-        string text_option = 3;
-        int32 number_option = 4;
-        bool boolean_option = 5;
+    oneof choice {
     }
 }
-
- // todo
+enum Choice {
+}
 enum Status {
     UNKNOWN = 0;
     ACTIVE = 1;
